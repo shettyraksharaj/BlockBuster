@@ -110,8 +110,6 @@ void display(void)
             th_rb2.join();
         }*/
     }
-
-    printf_s("size is: %d BeamVecPoin is %d \n", BeamCordinates.size(), BeamVecPoin);
     glutSwapBuffers();
     glutPostRedisplay();
 }
