@@ -1,7 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<gl/glut.h>
-#include<math.h>
+#include<random>
 #include<vector>
 #include<thread>
 
@@ -12,6 +12,7 @@ float rang = 0.0;
 float th = 0;
 float xShip = 0.0;
 int BeamVecPoin = 0;
+int obsVecPoin = 0;
 
 struct beam{
     float xBeam = 0.0;
@@ -22,6 +23,7 @@ struct obstacal {
     float xObs = 0.0;
     float yObs = 0.0;
     float obsSize = 0.0;
+    int obsType = 0;
 };
 
 std::vector<beam> BeamCordinates;
@@ -68,6 +70,18 @@ void keyboard(unsigned char key, int x, int y) {
         BeamCordinates[BeamVecPoin++].xBeam = xShip;
     }
 }
+void keyboardUp(unsigned char key, int x, int y) {
+    if (key == 'a' ) {
+        dir = 0;
+    }
+    if (key == 'd') {
+        dir = 0;
+    }
+    /*if (key == 32 && BeamCordinates.size() < 11) {
+    * 
+    * 
+    }*/
+}
  
 void plasmaBeam(int srt, int end) { 
     for (int x = srt; x < end; x++) {
@@ -84,8 +98,15 @@ void plasmaBeam(int srt, int end) {
 void fighter_ship(int dir) {
     if (dir == 0)
     {
+        if (rang > 0.0 && rang != 0.0) {
+            rang -= 0.05;
+        }
+        else if (rang < 0.0 && rang != 0.0) {
+            rang += 0.05;
+        }
         glPushMatrix();
-        glTranslatef(xShip, -627, 0);
+        glTranslatef(xShip, -627.0, 0.0);
+        glRotatef(rang, 0.0, 1.0, 0.0);
         glPushMatrix();
         glColor3f(1.0, 0.0, 0.0);
         glScalef(2.0, 4.0, 1.0);
@@ -149,8 +170,8 @@ void fighter_ship(int dir) {
     else if (dir == 1) {
         if (rang <= 30) rang += 0.05;
         glPushMatrix();
-        glTranslatef(xShip, -627, 0);
-        glRotatef(rang, 0, 1, 0);
+        glTranslatef(xShip, -627.0, 0.0);
+        glRotatef(rang, 0.0, 1.0, 0.0);
         glPushMatrix();
         glColor3f(1.0, 0.0, 0.0);
         glScalef(2.0, 4.0, 1.0);
@@ -214,8 +235,8 @@ void fighter_ship(int dir) {
     else if (dir == -1) {
     if (rang >= -30) rang -= 0.05;
         glPushMatrix();
-        glTranslatef(xShip, -627, 0);
-        glRotatef(rang, 0, 1, 0);
+        glTranslatef(xShip, -627.0, 0.0);
+        glRotatef(rang, 0.0, 1.0, 0.0);
         glPushMatrix();
         glColor3f(1.0, 0.0, 0.0);
         glScalef(2.0, 4.0, 1.0);
@@ -284,13 +305,13 @@ void obstacals(float xObs, float yObs, int obsType, float obsSize,float th) {
         glPushMatrix();
         glTranslatef(xObs, yObs, 0);
         glColor3f(1.0, 0.0, 0.0);
-        glutSolidSphere(obsSize, 25, 25);
+        glutSolidSphere(2*obsSize, 25, 25);
         glPopMatrix();
         break;
     case 2:
         glPushMatrix();
-        glRotated(th,-1,-1,0);
         glTranslatef(xObs, yObs, 0);
+        glRotated(th, -1, -1, 0);
         glScalef(3*obsSize, 3*obsSize, 3*obsSize);
         glColor3f(1.0, 0.0, 0.0);
         glutSolidIcosahedron();
@@ -309,13 +330,17 @@ void obstacals(float xObs, float yObs, int obsType, float obsSize,float th) {
 }
 
 void generate_obs() {
-
+    obs[obsVecPoin].obsType = rand() % 3 + 1;
+    float xObs[12] = {20.0,0.0,120.0,560.0,-567.0,-100.0,-650.0,-300.0,-800.0,760.0,430.0,-60.0};
+    int xObsSel = rand() % 12 ;
+    float ObsSize[5] = { 20.0,10.0,40.0,30.0,25.0 };
+    float obsSizeSel = rand() % 5;
 }
 void display(void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
-    //obstacals(100, 100, 3, 30, th +=0.1 );
+    obstacals(100, 100, 1, 40, th +=0.1 );
     
     fighter_ship(dir);
     if (BeamCordinates.size() > 0) {
@@ -338,6 +363,7 @@ int main(int argc, char** argv)
     init();
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
+    glutKeyboardUpFunc(keyboardUp);
     glutMainLoop();
     return 0;
 }
