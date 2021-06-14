@@ -1,21 +1,26 @@
 #include<stdio.h>
-#include <stdlib.h>
+#include<stdlib.h>
 #include<gl/glut.h>
 #include<math.h>
 #include<vector>
+#include<thread>
 
 using std::vector;
 
-int BeamVecPoin = 0;
-struct beam{
-    float xBeam;
-    float yBeam = -565;
-};
+
 
 float xShip = 0.0;
-void plasmaBeam(float xBeam,float ybeam);
+int BeamVecPoin = 0;
+
+struct beam{
+    float xBeam = 0.0;
+    float yBeam = -565.00;
+};
 
 std::vector<beam> BeamCordinates;
+
+void plasmaBeam(int srt, int end);
+
 
 void init(void)
 {
@@ -26,6 +31,21 @@ void init(void)
     glMatrixMode(GL_MODELVIEW);
 }
 
+void vaporize() {
+    if (BeamCordinates[0].yBeam >= 620.00 && BeamVecPoin >= 0) {
+                for (int i = 0; i < (BeamCordinates.size()-1) && BeamCordinates.size() > 1; i++) {
+                    BeamCordinates[i].xBeam = BeamCordinates[i + 1].xBeam;
+                    BeamCordinates[i].yBeam = BeamCordinates[i + 1].yBeam;
+                }
+                if (BeamVecPoin == 0) {
+                    BeamVecPoin = 0;
+                    BeamCordinates.resize(BeamVecPoin);
+                    return;
+                }
+                BeamVecPoin--;
+                BeamCordinates.resize(BeamVecPoin);
+    }
+}
 void keyboard(unsigned char key, int x, int y) {
     if (key == 'a') {
         xShip -= 15;
@@ -33,20 +53,22 @@ void keyboard(unsigned char key, int x, int y) {
     if (key == 'd') {
         xShip += 15;
     }
-    if (key == 32) {
-        BeamCordinates.resize(++BeamVecPoin);
-        BeamCordinates[BeamVecPoin-1].xBeam = xShip;
+    if (key == 32 && BeamCordinates.size() < 11) {
+        BeamCordinates.resize((BeamVecPoin+1));
+        BeamCordinates[BeamVecPoin++].xBeam = xShip;
     }
 }
  
-void plasmaBeam(float xBeam, float yBeam) {
-    glColor3f(1.0, 0.2, 0.3);
-    glPushMatrix();
-    glTranslatef(xBeam,yBeam,0.0);
-    glScalef(0.8, 2.0, 0.6);
-    glutSolidSphere(6, 25, 25);
-    glPopMatrix();
-
+void plasmaBeam(int srt, int end) { 
+    for (int x = srt; x < end; x++) {
+        glColor3f(1.0, 0.2, 0.3);
+        glPushMatrix();
+        glTranslatef(BeamCordinates[x].xBeam, BeamCordinates[x].yBeam, 0.0);
+        glScalef(0.8, 2.0, 0.6);
+        glutSolidSphere(6, 25, 25);
+        glPopMatrix();
+        BeamCordinates[x].yBeam += 3;
+    }
 }
 
 void fighter_ship() {
@@ -64,6 +86,7 @@ void fighter_ship() {
 }
 
 
+
 void display(void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -74,11 +97,21 @@ void display(void)
     glutSolidSphere(25.0, 25, 25);
     glPopMatrix();
     fighter_ship();
-    if (!BeamCordinates.empty()) {
-        for (int x = 0; x < BeamCordinates.size() ; x++) {
-            plasmaBeam (BeamCordinates[x].xBeam, BeamCordinates[x].yBeam++);
+    if (BeamCordinates.size() > 0) {
+        vaporize();
+        plasmaBeam(0, BeamCordinates.size());
+        /*if (BeamCordinates.size() <= 10) {
+           
         }
+        else if (BeamCordinates.size() > 5) {
+            std::thread th_rb1(plasmaBeam, 0, 5);
+            std::thread th_rb2(plasmaBeam, 6, BeamCordinates.size());
+            th_rb1.join();
+            th_rb2.join();
+        }*/
     }
+
+    printf_s("size is: %d BeamVecPoin is %d \n", BeamCordinates.size(), BeamVecPoin);
     glutSwapBuffers();
     glutPostRedisplay();
 }
