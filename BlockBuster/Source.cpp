@@ -149,8 +149,8 @@ void fighter_ship(int dir) {
     else if (dir == 1) {
         if (rang <= 30) rang += 0.05;
         glPushMatrix();
-        glRotatef(rang, 0, 1, 0);
         glTranslatef(xShip, -627, 0);
+        glRotatef(rang, 0, 1, 0);
         glPushMatrix();
         glColor3f(1.0, 0.0, 0.0);
         glScalef(2.0, 4.0, 1.0);
@@ -214,8 +214,8 @@ void fighter_ship(int dir) {
     else if (dir == -1) {
     if (rang >= -30) rang -= 0.05;
         glPushMatrix();
-        glRotatef(rang, 0, 1, 0);
         glTranslatef(xShip, -627, 0);
+        glRotatef(rang, 0, 1, 0);
         glPushMatrix();
         glColor3f(1.0, 0.0, 0.0);
         glScalef(2.0, 4.0, 1.0);
@@ -316,6 +316,7 @@ void display(void)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
     //obstacals(100, 100, 3, 30, th +=0.1 );
+    
     fighter_ship(dir);
     if (BeamCordinates.size() > 0) {
         vaporize();
