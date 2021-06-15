@@ -4,6 +4,8 @@
 #include<random>
 #include<vector>
 #include<thread>
+#include<chrono>
+#include<functional>
 
 using std::vector;
 
@@ -13,6 +15,9 @@ float th = 0;
 float xShip = 0.0;
 int BeamVecPoin = 0;
 int obsVecPoin = 0;
+const int maxObstacals = 8;
+float obsSpeedFac = 2.0;
+float beamSpeedFac = 3.0;
 
 struct beam{
     float xBeam = 0.0;
@@ -21,13 +26,13 @@ struct beam{
 
 struct obstacal {
     float xObs = 0.0;
-    float yObs = 0.0;
+    float yObs = 610.0;
     float obsSize = 0.0;
     int obsType = 0;
 };
 
 std::vector<beam> BeamCordinates;
-std::vector<obstacal> obs;
+obstacal obs[maxObstacals];
 
 void plasmaBeam(int srt, int end);
 
@@ -42,17 +47,17 @@ void init(void)
 
 void vaporize() {
     if (BeamCordinates[0].yBeam >= 620.00 && BeamVecPoin >= 0) {
-                for (int i = 0; i < (BeamCordinates.size()-1) && BeamCordinates.size() > 1; i++) {
-                    BeamCordinates[i].xBeam = BeamCordinates[i + 1].xBeam;
-                    BeamCordinates[i].yBeam = BeamCordinates[i + 1].yBeam;
-                }
-                if (BeamVecPoin == 0) {
-                    BeamVecPoin = 0;
-                    BeamCordinates.resize(BeamVecPoin);
-                    return;
-                }
-                BeamVecPoin--;
-                BeamCordinates.resize(BeamVecPoin);
+        for (int i = 0; i < (BeamCordinates.size() - 1) && BeamCordinates.size() > 1; i++) {
+            BeamCordinates[i].xBeam = BeamCordinates[i + 1].xBeam;
+            BeamCordinates[i].yBeam = BeamCordinates[i + 1].yBeam;
+        }
+        if (BeamVecPoin == 0) {
+            BeamVecPoin = 0;
+            BeamCordinates.resize(BeamVecPoin);
+            return;
+        }
+        BeamVecPoin--;
+        BeamCordinates.resize(BeamVecPoin);
     }
 }
 
@@ -83,26 +88,25 @@ void keyboardUp(unsigned char key, int x, int y) {
     }*/
 }
  
-void plasmaBeam(int srt, int end) { 
-    for (int x = srt; x < end; x++) {
+void plasmaBeam(float xBeam, float yBeam) { 
+   
         glColor3f(1.0, 0.2, 0.3);
         glPushMatrix();
-        glTranslatef(BeamCordinates[x].xBeam, BeamCordinates[x].yBeam, 0.0);
+        glTranslatef(xBeam, yBeam, 0.0);
         glScalef(0.8, 2.0, 0.6);
         glutSolidSphere(6, 25, 25);
         glPopMatrix();
-        BeamCordinates[x].yBeam += 3;
-    }
+        yBeam += 1.0*beamSpeedFac;
 }
 
 void fighter_ship(int dir) {
     if (dir == 0)
     {
         if (rang > 0.0 && rang != 0.0) {
-            rang -= 0.05;
+            rang -= 0.5;
         }
         else if (rang < 0.0 && rang != 0.0) {
-            rang += 0.05;
+            rang += 0.5;
         }
         glPushMatrix();
         glTranslatef(xShip, -627.0, 0.0);
@@ -168,7 +172,7 @@ void fighter_ship(int dir) {
         glPopMatrix();
     }
     else if (dir == 1) {
-        if (rang <= 30) rang += 0.05;
+        if (rang <= 30) rang += 0.5;
         glPushMatrix();
         glTranslatef(xShip, -627.0, 0.0);
         glRotatef(rang, 0.0, 1.0, 0.0);
@@ -233,7 +237,7 @@ void fighter_ship(int dir) {
         glPopMatrix();
     }
     else if (dir == -1) {
-    if (rang >= -30) rang -= 0.05;
+    if (rang >= -30) rang -= 0.5;
         glPushMatrix();
         glTranslatef(xShip, -627.0, 0.0);
         glRotatef(rang, 0.0, 1.0, 0.0);
@@ -330,27 +334,37 @@ void obstacals(float xObs, float yObs, int obsType, float obsSize,float th) {
 }
 
 void generate_obs() {
-    obs[obsVecPoin].obsType = rand() % 3 + 1;
-    float xObs[12] = {20.0,0.0,120.0,560.0,-567.0,-100.0,-650.0,-300.0,-800.0,760.0,430.0,-60.0};
-    int xObsSel = rand() % 12 ;
-    float ObsSize[5] = { 20.0,10.0,40.0,30.0,25.0 };
-    float obsSizeSel = rand() % 5;
+    while (true) {
+        obs[obsVecPoin].obsType = rand() % 3 + 1;
+        float xObs[12] = { 20.0,0.0,120.0,560.0,-567.0,-100.0,-650.0,-300.0,-800.0,760.0,430.0,-60.0 };
+        obs[obsVecPoin].xObs = xObs[rand() % 12];
+        float ObsSize[5] = { 20.0,10.0,40.0,30.0,25.0 };
+        obs[obsVecPoin].obsSize = ObsSize[rand() % 5];
+        obs[obsVecPoin++].yObs = 610.0;
+        if (obsVecPoin == maxObstacals) obsVecPoin = 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    }
 }
 void display(void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glLoadIdentity();
-    obstacals(100, 100, 1, 40, th +=0.1 );
-    
     fighter_ship(dir);
-    if (BeamCordinates.size() > 0) {
-        vaporize();
-        plasmaBeam(0, BeamCordinates.size());
+
+    for (int x = 0; x < 10; x++) {
+        obstacals(obs[x].xObs, obs[x].yObs -= (0.09 * obsSpeedFac), obs[x].obsType, obs[x].obsSize, th += 0.01);
+        if (BeamCordinates.size() > x) {
+            printf("vec size:%d\t x: %d\n", BeamCordinates.size(), x);
+            plasmaBeam(BeamCordinates[x].xBeam, BeamCordinates[x].yBeam++);
+        }
+        
+    }
+    if (BeamCordinates.size() > 1) {
+        std::thread th_vp(vaporize);
+        th_vp.detach();
     }
     glutSwapBuffers();
     glutPostRedisplay();
 }
-
 
 int main(int argc, char** argv)
 {
@@ -360,6 +374,8 @@ int main(int argc, char** argv)
     glutInitWindowPosition(0, 0);
     glutCreateWindow("BlockBuster");
     glEnable(GL_DEPTH_TEST);
+    std::thread th_genObs(generate_obs);
+    th_genObs.detach();
     init();
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
