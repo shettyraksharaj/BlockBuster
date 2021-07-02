@@ -92,6 +92,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glew32.lib;freetype\freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -139,10 +140,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Shaders.cpp" />
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\..\Downloads\asteroid.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="..\..\..\..\Downloads\sportypo-font\SportypoReguler.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="fontshaders.h" />
+    <ClInclude Include="Shaders.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
