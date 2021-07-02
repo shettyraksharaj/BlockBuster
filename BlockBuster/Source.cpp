@@ -1,14 +1,12 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<gl/glut.h>
+#include<gl/GLU.h>
 #include<random>
 #include<vector>
 #include<thread>
 #include<chrono>
-#include<functional>
-#include<glm/vec2.hpp>
-#include<glm/glm.hpp>
-
+#include<conio.h>
 
 using std::vector;
 
@@ -19,11 +17,16 @@ float xShip = 0.0;
 int BeamVecPoin = 0;
 int obsVecPoin = 0;
 const int maxObstacals = 15;
-float obsSpeedFac = 3.0;
-float beamSpeedFac = 3.0;
-int axisListSize = 0;
-int id1 = 0;
-int id2 = 0;
+float obsSpeedFac = 13.5;
+float beamSpeedFac = 7.0;
+float rof = 1.0;
+int playerHealth = 2;
+bool firebeams;
+bool shipcollision = false;
+int shipnorenderframe = 10;
+int shipnorenderframetime = 3;
+const int maxExplosions = 15;
+
 
 struct beam{
     float xBeam = 0.0;
@@ -40,20 +43,25 @@ struct obstacal {
     float obsRadius = 0.0;
     float x1 = 0.0;
     float x2 = 0.0;
+    float eX = 0.0;
+    float eY = 0.0;
     bool renderObs = false;
+    bool state = true;
+    int id;
 };
 
-struct axisList {
-    float xmin;
-    float xmax;
-    int id[2];
+struct explosionsXY {
+    float expX = 0;
+    float expY = 0;
 };
 
 std::vector<beam> Beams;
 obstacal obs[maxObstacals];
-std::vector<axisList> axisListItems;
+explosionsXY explosions[maxExplosions];
+
 
 void plasmaBeam(float xBeam, float yBeam);
+
 
 void init(void)
 {
@@ -65,24 +73,43 @@ void init(void)
 }
 
 
+
 void vaporize() {
     for (auto& it : Beams) {
         if (it.yBeam >= 620.00) {
             it.renderBeam = false;
         }
     }
+    for (int i = 0; i < maxObstacals;i++) {
+        if (obs[i].yObs <= -750.00) {
+            obs[i].renderObs = false;
+        }
+    }
 }
+
+
 
 void firebeam() {
-    if (BeamVecPoin == 100) BeamVecPoin = 0;
-    Beams.resize((BeamVecPoin + 1));
-    Beams[BeamVecPoin].renderBeam = true;
-    Beams[BeamVecPoin++].xBeam = xShip;
+    while (firebeams) {
+        if (BeamVecPoin == 99) BeamVecPoin = 0;
+        Beams[BeamVecPoin].renderBeam = true;
+        Beams[BeamVecPoin].xBeam = xShip;
+        Beams[BeamVecPoin++].yBeam = -565.00;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
 }
 
+
+
 void mouse(int button, int state, int x, int y) {
-    if (button == GLUT_LEFT_BUTTON) {
-        firebeam();
+    if (button == GLUT_LEFT_BUTTON and state == GLUT_DOWN) {
+        firebeams = true;
+        std::thread th_fb(firebeam);
+        th_fb.detach();
+    }
+    else if (button == GLUT_LEFT_BUTTON and state == GLUT_UP)
+    {
+        firebeams = false;
     }
 }
 
@@ -97,9 +124,7 @@ void keyboard(unsigned char key, int x, int y) {
         xShip += 15;
         dir = 1;
     }
-    if (key == 32) {
 
-    }
 }
 
 
@@ -110,12 +135,10 @@ void keyboardUp(unsigned char key, int x, int y) {
     if (key == 'd') {
         dir = 0;
     }
-    /*if (key == 32 && BeamCordinates.size() < 11) {
-    * 
-    * 
-    }*/
 }
- 
+
+
+
 void plasmaBeam(float xBeam, float yBeam) { 
    
         glColor3f(1.0, 0.2, 0.3);
@@ -127,7 +150,9 @@ void plasmaBeam(float xBeam, float yBeam) {
         glPopMatrix();
 }
 
-void fighter_ship(int dir) {
+
+
+void fighter_ship(int dir) {//combine rotate into single if else block
     if (dir == 0)
     {
         if (rang > 0.0 && rang != 0.0) {
@@ -331,29 +356,73 @@ void fighter_ship(int dir) {
     }
 }
 
+
+
 void obstacals(float xObs, float yObs, float obsSize) {
     glPushMatrix();
     glTranslatef(xObs, yObs, 0);
     glColor3f(1.0, 0.0, 0.0);
-    glutSolidSphere(2.0 * obsSize, 25, 25);
+    GLUquadricObj* sphere = gluNewQuadric();
+    gluSphere(sphere, 2.0 * obsSize, 25, 25);
     glPopMatrix();
-
 }
+
+
+
+void explosion(float x, float y, int i) {
+    glColor3f(1.0, 0.0, 0.0);
+    glPointSize(10);
+    if (y == obs[i].obsSize*2.0) {
+        obs[i].state = true;
+        explosions[i].expX = 0;
+        explosions[i].expY = 0;
+    }
+    glBegin(GL_POINTS);
+    glVertex3f(obs[i].eX + (1.0 * x), obs[i].eY + (1.0 * y), 0.0);
+    glVertex3f(obs[i].eX + (1.5 * x), obs[i].eY + (1.2 * y), 0.0);
+    glVertex3f(obs[i].eX + (1.2 * x), obs[i].eY + (0.7 * y), 0.0);
+    glVertex3f(obs[i].eX + (0.4 * x), obs[i].eY + (0.2 * y), 0.0);
+    glVertex3f(obs[i].eX + (1.1 * x), obs[i].eY + (0.3 * y), 0.0);
+    glVertex3f(obs[i].eX + (0.3 * x), obs[i].eY + (1.6 * y), 0.0);
+    glVertex3f(obs[i].eX + (0.5 * x), obs[i].eY + (0.7 * y), 0.0);
+    glVertex3f(obs[i].eX + (0.64 * x), obs[i].eY + (0.4 * y), 0.0);
+
+    glVertex3f(obs[i].eX + (1.3 * x), obs[i].eY - (1.0 * y), 0.0);
+    glVertex3f(obs[i].eX + (0.3 * x), obs[i].eY - (0.2 * y), 0.0);
+    glVertex3f(obs[i].eX + (0.5 * x), obs[i].eY - (1.3 * y), 0.0);
+    glVertex3f(obs[i].eX + (0.9 * x), obs[i].eY - (0.5 * y), 0.0);
+    glVertex3f(obs[i].eX + (1.1 * x), obs[i].eY - (0.8 * y), 0.0);
+
+    glVertex3f(obs[i].eX - (0.8 * x), obs[i].eY - (1.0 * y), 0.0);
+    glVertex3f(obs[i].eX - (1.3 * x), obs[i].eY - (0.1 * y), 0.0);
+    glVertex3f(obs[i].eX - (1.1 * x), obs[i].eY - (0.6 * y), 0.0);
+
+    glVertex3f(obs[i].eX - (1.0 * x), obs[i].eY + (0.6 * y), 0.0);
+    glVertex3f(obs[i].eX - (0.6 * x), obs[i].eY + (0.3 * y), 0.0);
+    glVertex3f(obs[i].eX - (1.1 * x), obs[i].eY + (0.2 * y), 0.0);
+    glVertex3f(obs[i].eX - (0.35 * x), obs[i].eY + (0.4 * y), 0.0);
+    glVertex3f(obs[i].eX - (0.5 * x), obs[i].eY + (1.3 * y), 0.0);
+    glEnd();
+}
+
+
 
 void generate_obs() {
     while (true) {
-        if ((!obs[obsVecPoin].renderObs) || obs[obsVecPoin].yObs < -620.0) {
-            float xObs[8] = { 0.0,240.0,560.0,-567.0,-100.0,-330.0,-800.0,760.0 };
-            obs[obsVecPoin].xObs = xObs[rand() % 12];
-            float ObsSize[5] = { 20.0,10.0,40.0,30.0,25.0 };
-            obs[obsVecPoin].obsSize = ObsSize[rand() % 5];
+        if ((!obs[obsVecPoin].renderObs) || obs[obsVecPoin].yObs < -750.0) {
+            float xObsChoice[8] = { 0.0,240.0,560.0,-567.0,-100.0,-330.0,-800.0,760.0 };
+            float obsSizeChoice[5] = { 20.0,10.0,40.0,30.0,25.0 };
+            obs[obsVecPoin].xObs = xObsChoice[rand() % 12];
+            obs[obsVecPoin].obsSize = obsSizeChoice[rand() % 5];
             obs[obsVecPoin].renderObs = true;
+            obs[obsVecPoin].state = true;
+            obs[obsVecPoin].id = obsVecPoin;
             obs[obsVecPoin].obsRadius = 2 * obs[obsVecPoin].obsSize;
             obs[obsVecPoin].x1 = obs[obsVecPoin].xObs - obs[obsVecPoin].obsRadius;
             obs[obsVecPoin].x2 = obs[obsVecPoin].xObs + obs[obsVecPoin].obsRadius;
             obs[obsVecPoin++].yObs = 610.0;
             if (obsVecPoin == maxObstacals) obsVecPoin = 0;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
         else {
             obsVecPoin++;
@@ -362,107 +431,52 @@ void generate_obs() {
         }
     }
 }
+
+
+
 void update() {
     auto obsup = []() {
-        for (int x = 0; x < 10; x++) {
+        for (int x = 0; x < maxObstacals; x++) {
             if (obs[x].renderObs) {
                 obs[x].yObs -= (0.09 * obsSpeedFac);
             }
         }
     };
-    std::thread th_obs(obsup);
-    th_obs.detach();
-
-    for (int x = 0; x < Beams.size(); x++) {
-        if (Beams[x].renderBeam == false)continue;
-        if (Beams.size() > x) {
-            Beams[x].yBeam++;
+    auto expup = []() {
+        for (int x = 0; x < maxExplosions; x++) {
+            if (!obs[x].state) {
+                explosions[x].expX += 0.5;
+                explosions[x].expY += 0.5;
+            }
         }
-    }
-    //th_obs.join();
+    };
+    auto bemup = []() {
+        for (int x = 0; x < Beams.size(); x++) {
+            if (Beams[x].renderBeam == false)continue;
+            if (Beams.size() > x) {
+                Beams[x].yBeam += 1.0*beamSpeedFac;
+            }
+        }
+    };
+    std::thread th_obs(obsup);
+    std::thread th_exp(expup);
+    std::thread th_bm(bemup);
+    th_obs.join();
+    th_exp.join();
+    th_bm.join();
 }
 
-//void updateAxisList() {
-//    axisListItems.clear();
-//    for (int i = 0; i < 10; i++) {
-//        if (obs[i].renderObs) {
-//            axisListSize++;
-//            axisListItems.resize(axisListSize);
-//            axisListItems[axisListSize - 1].xmin = -obs[i].obsRadius + obs[i].xObs-3;
-//            axisListItems[axisListSize - 1].xmax = obs[i].obsRadius + obs[i].xObs+3;
-//            axisListItems[axisListSize - 1].id[0] = 2;
-//            axisListItems[axisListSize - 1].id[1] = i;
-//        }
-//    }
-//    for (auto& it : Beams) {
-//        axisListSize++;
-//        axisListItems.resize(axisListSize);
-//        axisListItems[axisListSize - 1].xmin = -5.8 + it.xBeam;
-//        axisListItems[axisListSize - 1].xmax = 5.8 + it.xBeam;
-//        axisListItems[axisListSize - 1].id[0] = 1;
-//        axisListItems[axisListSize - 1].id[1] = id1++;
-//    }
-//    std::sort(axisListItems.begin(), axisListItems.end(), [](axisList a, axisList b) {
-//        return a.xmin < b.xmin;
-//        });
-//}
 
-//void sortAndSweep() {
-//    struct activeList {
-//        float xmin;
-//        float xmax;
-//        int id[2];
-//        bool collision = false;
-//    };
-//    std::vector <activeList> activelists;
-//    activelists.resize(axisListSize);
-//    activelists[0].xmin = axisListItems[0].xmin;
-//    activelists[0].xmax = axisListItems[0].xmin;
-//    activelists[0].id[0] = axisListItems[0].xmin;
-//    activelists[0].id[1] = axisListItems[0].xmin;
-//    for (int i = 0; i < axisListItems.size();i++) {
-//        for (int j = i + 1; j < axisListItems.size(); j++) {
-//            if (activelists[i].xmax < axisListItems[j].xmin && ) {
-//                activelists[i].xmin = axisListItems[j].xmin;
-//                activelists[i].xmax = axisListItems[j].xmin;
-//                activelists[i].id[0] = axisListItems[j].xmin;
-//                activelists[i].id[1] = axisListItems[j].xmin;
-//                
-//            }
-//            else {
-//                activelists[i+1].xmin = axisListItems[j].xmin;
-//                activelists[i+1].xmax = axisListItems[j].xmin;
-//                activelists[i+1].id[0] = axisListItems[j].xmin;
-//                activelists[i+1].id[1] = axisListItems[j].xmin;
-//                activelists[i + 1].collision = true;
-//                activelists[i].collision = true;
-//            }
-//        }
-//    }
-//    for (auto& it : activelists) {
-//        collisionDetection();
-//    }
-//
-//}
-//
-//void collisionDetection(struct activeList activelist1, struct activeList activelist2) {
-//    // collision x-axis?
-//    bool collisionX = one.Position.x + one.Size.x >= two.Position.x &&
-//        two.Position.x + two.Size.x >= one.Position.x;
-//    // collision y-axis?
-//    bool collisionY = one.Position.y + one.Size.y >= two.Position.y &&
-//        two.Position.y + two.Size.y >= one.Position.y;
-//    // collision only if on both axes
-//    // collisionX && collisionY;
-//
-//}
 
-void collisiondetection() {
+void collisiondetection_beam_obs() {
     for (int i = 0; i < maxObstacals; i++) {
         for (auto& it : Beams) {
-            if ((obs[i].yObs - obs[i].obsRadius) < (it.yBeam + it.xhalsize) && it.renderBeam && obs[i].renderObs) {
+            if ((obs[i].yObs - obs[i].obsRadius) < (it.yBeam + it.yhalsize) && it.renderBeam && obs[i].renderObs) {
                 if ((obs[i].x1 < it.xBeam) && (obs[i].x2 > it.xBeam)) {
                     obs[i].renderObs = false;
+                    obs[i].state = false;
+                    obs[i].eX = obs[i].xObs;
+                    obs[i].eY = obs[i].yObs;
                     it.renderBeam = false;
                     it.yBeam = -100000;
                     break;
@@ -472,31 +486,81 @@ void collisiondetection() {
     }
 }
 
+
+
+void collisiondetection_ship() {
+    for (int i = 0; i < maxObstacals; i++) {
+        if ((obs[i].yObs - obs[i].obsRadius) < -585 && ((obs[i].yObs + obs[i].obsRadius)>-672) && obs[i].renderObs) {
+            if ((68.0+obs[i].obsRadius)>abs(xShip-obs[i].xObs)) {
+                printf_s("collided obs id: %d\tobs x: %f\tobs y: %f\t obs radius: %f\n",obs[i].id, obs[i].xObs, obs[i].yObs, obs[i].obsRadius);
+                obs[i].renderObs = false;
+                playerHealth--;
+                shipcollision = true;
+            }
+        }
+    }
+}
+
+
+
 void display(void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    fighter_ship(dir);
-    for (int x = 0; x < 10; x++) {
+    
+    if (shipcollision) {
+        if (shipnorenderframetime > 0) {
+            if (shipnorenderframe > 0) {
+                shipnorenderframe--;
+            }
+            else if (shipnorenderframe > -5) {
+                fighter_ship(dir);
+                shipnorenderframe--;
+            }
+            else {
+                shipnorenderframe = 5;
+                shipnorenderframetime--;
+            }
+        }
+        else {
+            shipcollision = false;
+            shipnorenderframe = 10;
+            shipnorenderframetime = 3;
+        }
+    }
+    else {
+        fighter_ship(dir);
+    }
+
+
+    for (int x = 0; x < maxObstacals; x++) {
         if (obs[x].renderObs) {
             obstacals(obs[x].xObs, obs[x].yObs, obs[x].obsSize);
         }
+        if (!obs[x].state) {
+           explosion(explosions[x].expX, explosions[x].expY, x);
+        }
     }
+
     for (int x = 0; x < Beams.size(); x++) {
         if (Beams.size() > x && Beams[x].renderBeam) {
             plasmaBeam(Beams[x].xBeam, Beams[x].yBeam);
         }
     }
-    /*collisionDetection()*/
-    /*updateAxisList();*/
-    collisiondetection();
+
+    collisiondetection_beam_obs();
+    collisiondetection_ship();
+    printf_s("\n\n\n");
     update();
     if (Beams.size() > 1) {
         std::thread th_vp(vaporize);
         th_vp.detach();
     }
+    
     glutSwapBuffers();
     glutPostRedisplay();
 }
+
+
 
 int main(int argc, char** argv)
 {
@@ -508,9 +572,8 @@ int main(int argc, char** argv)
     glEnable(GL_DEPTH_TEST);
     std::thread th_genObs(generate_obs);
     th_genObs.detach();
-   /* std::thread th_detctcol(collisionDetection);
-    th_detctcol.detach();*/
     init();
+    Beams.resize(100);
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
     glutMouseFunc(mouse);
